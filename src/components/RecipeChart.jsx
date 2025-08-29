@@ -11,7 +11,7 @@ import {
 
 // No API key needed for TheMealDB!
 
-const RecipeChart = ({ recipeIds }) => {
+const RecipeChart = ({ recipes }) => {
   const [chartData, setChartData] = useState([]);
 
   // Function to count non-empty ingredients in a recipe
@@ -27,34 +27,14 @@ const RecipeChart = ({ recipeIds }) => {
   };
 
   useEffect(() => {
-    const fetchRecipeComplexity = async () => {
-      const data = [];
-      for (const id of recipeIds) {
-        try {
-          const response = await fetch(
-            `https://www.themealdb.com/api/json/v1/1/lookup.php?i=${id}`
-          );
-          const json = await response.json();
-          if (json.meals && json.meals[0]) {
-            const recipe = json.meals[0];
-            data.push({
-              id: id,
-              ingredientCount: countIngredients(recipe),
-            });
-          }
-        } catch (error) {
-          console.error(`Error fetching data for recipe ${id}:`, error);
-          // Add a placeholder in case of error
-          data.push({ id: id, ingredientCount: 0 });
-        }
-      }
+    if (recipes && recipes.length > 0) {
+      const data = recipes.map((recipe) => ({
+        id: recipe.idMeal,
+        ingredientCount: countIngredients(recipe),
+      }));
       setChartData(data);
-    };
-
-    if (recipeIds && recipeIds.length > 0) {
-      fetchRecipeComplexity();
     }
-  }, [recipeIds]);
+  }, [recipes]);
 
   return (
     <div>

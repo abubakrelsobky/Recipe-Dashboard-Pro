@@ -2,16 +2,14 @@ import { useState, useEffect } from "react";
 import "./App.css";
 import { Link } from "react-router-dom";
 import RecipeChart from "./components/RecipeChart";
-
-// No API key needed for TheMealDB!
+import RecipeCard from "./components/RecipeCard";
 
 function App() {
   const [list, setList] = useState(null);
   const [filteredResults, setFilteredResults] = useState([]);
   const [filters, setFilters] = useState({
-    area: "", // Italian, Chinese, etc.
-    category: "", // Chicken, Vegetarian, etc.
-    ingredient: "", // Filter by main ingredient
+    area: "",
+    category: "",
     searchInput: "",
   });
 
@@ -23,37 +21,125 @@ function App() {
   };
 
   const applyFilters = async () => {
-    let url = "";
+    // console.log("Current filters:", filters);
 
-    // TheMealDB API endpoints
-    if (filters.searchInput) {
-      // Search by name
-      url = `https://www.themealdb.com/api/json/v1/1/search.php?s=${filters.searchInput}`;
-    } else if (filters.area) {
-      // Filter by cuisine/area
-      url = `https://www.themealdb.com/api/json/v1/1/filter.php?a=${filters.area}`;
-    } else if (filters.category) {
-      // Filter by category
-      url = `https://www.themealdb.com/api/json/v1/1/filter.php?c=${filters.category}`;
-    } else if (filters.ingredient) {
-      // Filter by main ingredient
-      url = `https://www.themealdb.com/api/json/v1/1/filter.php?i=${filters.ingredient}`;
+    // Given we have multiple non-search filters, we need to handle TheMealDB's limitations
+    // TheMealDB doesn't support multiple filter parameters in a single call
+    const activeFilters = [];
+    if (filters.area) activeFilters.push({ type: "area", value: filters.area });
+    if (filters.category)
+      activeFilters.push({ type: "category", value: filters.category });
+
+    // console.log("Active filters:", activeFilters);
+
+    let url = "";
+    let allResults = [];
+
+    // Get results based on filters (not search)
+    if (activeFilters.length === 1) {
+      // Single filter - use direct API call
+      const filter = activeFilters[0];
+      if (filter.type === "area") {
+        url = `https://www.themealdb.com/api/json/v1/1/filter.php?a=${encodeURIComponent(
+          filter.value
+        )}`;
+      } else if (filter.type === "category") {
+        url = `https://www.themealdb.com/api/json/v1/1/filter.php?c=${encodeURIComponent(
+          filter.value
+        )}`;
+      }
+      // console.log("Using single filter URL:", url);
+    } else if (activeFilters.length > 1) {
+      // Multiple filters - fetch each separately and find intersection
+      // console.log("Using multiple filters - fetching intersection");
+      const filterResults = await Promise.all(
+        activeFilters.map(async (filter) => {
+          let filterUrl = "";
+          if (filter.type === "area") {
+            filterUrl = `https://www.themealdb.com/api/json/v1/1/filter.php?a=${encodeURIComponent(
+              filter.value
+            )}`;
+          } else if (filter.type === "category") {
+            filterUrl = `https://www.themealdb.com/api/json/v1/1/filter.php?c=${encodeURIComponent(
+              filter.value
+            )}`;
+          }
+
+          // console.log("Fetching filter URL:", filterUrl);
+          const response = await fetch(filterUrl);
+          const json = await response.json();
+          // console.log("Filter result:", json);
+          return json.meals || [];
+        })
+      );
+
+      // Find intersection of all filter results
+      if (filterResults.length > 0) {
+        allResults = filterResults[0].filter((meal) =>
+          filterResults.every((results) =>
+            results.some((result) => result.idMeal === meal.idMeal)
+          )
+        );
+      }
+
+      // console.log("Intersection results:", allResults);
+      setList({ meals: allResults });
+
+      // Now apply search filter on these results
+      if (filters.searchInput && filters.searchInput.trim() !== "") {
+        const searchFiltered = allResults.filter((meal) =>
+          meal.strMeal.toLowerCase().includes(filters.searchInput.toLowerCase())
+        );
+        // console.log("Search filtered results:", searchFiltered);
+        setFilteredResults(searchFiltered);
+      } else {
+        setFilteredResults(allResults);
+      }
+      return;
+    } else if (filters.searchInput && filters.searchInput.trim() !== "") {
+      // Only search, no other filters - use search API
+      url = `https://www.themealdb.com/api/json/v1/1/search.php?s=${encodeURIComponent(
+        filters.searchInput
+      )}`;
+      // console.log("Using search-only URL:", url);
     } else {
-      // Default: get some random recipes
+      // No filters - show default chicken recipes
       url = `https://www.themealdb.com/api/json/v1/1/search.php?s=chicken`;
+      // console.log("Using default URL:", url);
     }
 
-    const response = await fetch(url);
-    const json = await response.json();
-    console.log(json);
+    if (url) {
+      // console.log("Making API call to:", url);
+      const response = await fetch(url);
+      const json = await response.json();
+      // console.log("API Response:", json);
 
-    setList(json);
+      // Log the recipe names to debug what we're getting
+      if (json.meals) {
+        // console.log(
+        //   "Recipe names returned:",
+        //   json.meals.map((meal) => meal.strMeal)
+        // );
+      }
 
-    // TheMealDB returns data in 'meals' array instead of 'results'
-    if (json.meals) {
-      setFilteredResults(json.meals);
-    } else {
-      setFilteredResults([]);
+      setList(json);
+
+      // Apply search filter if we have search input
+      if (
+        filters.searchInput &&
+        filters.searchInput.trim() !== "" &&
+        activeFilters.length > 0
+      ) {
+        // We have both filters and search
+        // Filter the results by search term
+        const searchFiltered = (json.meals || []).filter((meal) =>
+          meal.strMeal.toLowerCase().includes(filters.searchInput.toLowerCase())
+        );
+        // console.log("Search filtered results from API:", searchFiltered);
+        setFilteredResults(searchFiltered);
+      } else {
+        setFilteredResults(json.meals || []);
+      }
     }
   };
 
@@ -63,7 +149,6 @@ function App() {
 
   const searchItems = (inputString) => {
     updateFilter("searchInput", inputString);
-    // TheMealDB handles search via API, so we don't need to filter locally
   };
 
   const FilterButton = ({ filterType, value, label }) => (
@@ -75,25 +160,20 @@ function App() {
     </button>
   );
 
-  // Extract ids from data to supply it as prop to RecipeChart component
-  const getRecipeIds = () => {
-    const data =
-      filteredResults.length > 0
-        ? filteredResults
-        : list && list.meals
-        ? list.meals
-        : [];
-    return data.map((recipe) => recipe.idMeal);
+  // Extract recipe data for chart
+  const getRecipeData = () => {
+    return filteredResults.length > 0 ? filteredResults : [];
   };
 
   return (
     <div className="whole-page">
-      <h1>Recipe Dashboard - Powered by TheMealDB</h1>
+      <h1>Recipe Dashboard (TheMealDB)</h1>
 
       <div className="search-and-filters">
         <input
           type="text"
-          placeholder="Search..."
+          className="search-input"
+          placeholder="Search recipes..."
           onChange={(e) => searchItems(e.target.value)}
           value={filters.searchInput}
         />
@@ -109,38 +189,13 @@ function App() {
             value="Vegetarian"
             label="Vegetarian"
           />
-          <FilterButton
-            filterType="category"
-            value="Chicken"
-            label="Chicken Recipes"
-          />
-          <FilterButton
-            filterType="ingredient"
-            value="chicken"
-            label="Chicken Ingredient"
-          />
+          <FilterButton filterType="category" value="Chicken" label="Chicken" />
         </div>
       </div>
 
       <ul className="recipe-list">
-        {(filteredResults.length > 0
-          ? filteredResults
-          : list && list.meals
-          ? list.meals
-          : []
-        ).map((recipe) => (
-          <li key={recipe.idMeal} className="recipe-card">
-            <Link to={`/recipeDetail/${recipe.idMeal}`}>
-              <p>
-                {recipe.strMeal} <span>({recipe.idMeal})</span>
-              </p>
-              <img
-                src={recipe.strMealThumb}
-                alt={recipe.strMeal}
-                loading="lazy"
-              />
-            </Link>
-          </li>
+        {(filteredResults.length > 0 ? filteredResults : []).map((recipe) => (
+          <RecipeCard key={recipe.idMeal} recipe={recipe} />
         ))}
       </ul>
 
@@ -150,7 +205,7 @@ function App() {
           ? `Total Number of Results: ${filteredResults.length}`
           : "No Results Found"}
       </p>
-      <RecipeChart recipeIds={getRecipeIds()} />
+      <RecipeChart recipes={getRecipeData()} />
     </div>
   );
 }
