@@ -19,7 +19,6 @@ A modern, AI-enhanced recipe dashboard that allows users to explore recipes with
 
 - **Smart Recipe Summaries**: Get AI-generated recipe summaries powered by Google Gemini
 - **One-Click Analysis**: Instantly understand what makes each recipe special
-- **Loading States**: Smooth user experience with proper loading indicators
 
 ### Technical Highlights
 
@@ -83,7 +82,7 @@ npm run dev
 - **AI**: Google Gemini for smart summaries
 - **Build Tool**: Vite
 - **Deployment**: [Your deployment platform]
-
+  
 ## 📊 Project Structure
 
 ```
@@ -100,38 +99,6 @@ src/
 │   └── aiService.js       # Google Gemini integration
 └── App.jsx                # Main application logic
 ```
-
-## 🎯 Key Features Implemented
-
-### Multi-Filter System
-
-- **Category Filter**: Italian, Mexican, Chinese, etc.
-- **Area Filter**: Regional cuisine filtering
-- **Ingredient Search**: Find recipes by specific ingredients
-- **Real-time Updates**: Instant filtering with smooth animations
-
-### AI Integration
-
-- **Smart Summaries**: AI analyzes recipes and provides insights
-- **Error Handling**: Graceful fallbacks for API issues
-- **Loading States**: Professional user experience
-- **Rate Limiting**: Respectful API usage
-
-### Data Visualization
-
-- **Interactive Charts**: Recharts-powered cooking time analysis
-- **Responsive Design**: Charts adapt to screen size
-- **Clear Labels**: Easy-to-understand data presentation
-
-## 🔍 MLH Fellowship Highlights
-
-This project demonstrates:
-
-- **Modern React Development**: Hooks, routing, and component architecture
-- **API Integration**: Multiple API services (TheMealDB, Google AI)
-- **User Experience**: Loading states, error handling, responsive design
-- **Code Quality**: Clean, maintainable, and well-documented code
-- **Innovation**: AI-enhanced features for better user engagement
 
 ## 🤝 Contributing
 
